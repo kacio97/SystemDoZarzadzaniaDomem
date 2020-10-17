@@ -3,17 +3,23 @@ package com.mainactivity.systemdozarzadzaniadomem.Activities;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.PersistableBundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.widget.EdgeEffect;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.mainactivity.systemdozarzadzaniadomem.Functionality.CreateNewDevice;
 import com.mainactivity.systemdozarzadzaniadomem.Models.ServerDevice;
 import com.mainactivity.systemdozarzadzaniadomem.R;
@@ -22,14 +28,18 @@ import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.client.mqttv3.*;
 
 import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Objects;
+
 
 public class MainActivity extends AppCompatActivity implements MqttCallback, Serializable {
 
     private static final String TAG = "ELO";
     //TODO: Zrobić sharedPreferences dla ArrayList<ServiceDevice>
-    private ArrayList<ServerDevice> devices = new ArrayList<>();
+    ArrayList<ServerDevice> devices = new ArrayList<>();
+    SharedPreferences preferences;
+    private final String key = "Devices";
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
@@ -59,7 +69,13 @@ public class MainActivity extends AppCompatActivity implements MqttCallback, Ser
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        String JSONstring = getPreferences(MODE_PRIVATE).getString(key, null);
+        Type type = new TypeToken<ArrayList<ServerDevice>>() {
+        }.getType();
 
+        if (getPreferences(MODE_PRIVATE).contains(key)) {
+            devices = new Gson().fromJson(JSONstring, type);
+        }
         if (getIntent().hasExtra("newDevice")) {
             ServerDevice serverDevice = (ServerDevice) getIntent().getSerializableExtra("newDevice");
             addNewDevice(serverDevice);
@@ -72,30 +88,42 @@ public class MainActivity extends AppCompatActivity implements MqttCallback, Ser
 
     public void addNewDevice(ServerDevice s) {
 
+        SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
+
         boolean exist = false;
-        for (int i = 0; i <= devices.size(); i++) {
-            if (devices.isEmpty()) {
-                devices.add(s);
-                Toast msg = Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG);
-                msg.show();
-                exist = false;
-                break;
-            }
 
-            if (devices.get(i).getClientID().equals(s.getClientID())) {
-                exist = true;
-            } else {
-                devices.add(s);
-                Toast msg = Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG);
-                msg.show();
-                exist = false;
-                break;
-
+        if (devices.isEmpty()) {
+            devices.add(s);
+            //TODO:
+            String json = new Gson().toJson(devices);
+            editor.putString(key, json);
+            editor.commit();
+            Log.d(TAG, "dodano urzadzenie " + s.toString());
+            Toast msg = Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG);
+            msg.show();
+        } else {
+            for (int i = 0; i < devices.size(); i++) {
+                if (devices.get(i).getClientID().equals(s.getClientID())) {
+                    exist = true;
+                } else {
+                    devices.add(s);
+                    String json = new Gson().toJson(devices);
+                    editor.putString(key, json);
+                    editor.commit();
+                    Log.d(TAG, "dodano urzadzenie " + s.toString());
+                    Toast msg = Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG);
+                    msg.show();
+                    exist = false;
+                    break;
+                }
             }
         }
 
         if (exist) {
             Toast msg = Toast.makeText(getApplicationContext(), "Takie urządzenie już istnieje", Toast.LENGTH_LONG);
+            String json = new Gson().toJson(devices);
+            editor.putString(key, json);
+            editor.commit();
             msg.show();
         }
     }
