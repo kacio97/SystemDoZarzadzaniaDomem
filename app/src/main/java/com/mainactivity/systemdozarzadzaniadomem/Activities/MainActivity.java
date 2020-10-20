@@ -2,6 +2,8 @@ package com.mainactivity.systemdozarzadzaniadomem.Activities;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Context;
 import android.content.Intent;
@@ -15,11 +17,13 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.EdgeEffect;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.mainactivity.systemdozarzadzaniadomem.Adapters.MainActivityAdapter;
 import com.mainactivity.systemdozarzadzaniadomem.Functionality.CreateNewDevice;
 import com.mainactivity.systemdozarzadzaniadomem.Models.ServerDevice;
 import com.mainactivity.systemdozarzadzaniadomem.R;
@@ -33,13 +37,13 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 
-public class MainActivity extends AppCompatActivity implements MqttCallback, Serializable {
+public class MainActivity extends AppCompatActivity implements MqttCallback, Serializable, MainActivityAdapter.ItemClickListener {
 
     private static final String TAG = "ELO";
-    //TODO: Zrobić sharedPreferences dla ArrayList<ServiceDevice>
     ArrayList<ServerDevice> devices = new ArrayList<>();
     SharedPreferences preferences;
     private final String key = "Devices";
+    MainActivityAdapter adapter;
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
@@ -68,6 +72,9 @@ public class MainActivity extends AppCompatActivity implements MqttCallback, Ser
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        RecyclerView recyclerView = findViewById(R.id.rvServerDevices);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
 
         String JSONstring = getPreferences(MODE_PRIVATE).getString(key, null);
         Type type = new TypeToken<ArrayList<ServerDevice>>() {
@@ -81,9 +88,19 @@ public class MainActivity extends AppCompatActivity implements MqttCallback, Ser
             addNewDevice(serverDevice);
         }
 
+
+        adapter = new MainActivityAdapter(devices, getApplicationContext());
+        adapter.setOnCLickListener(this);
+        recyclerView.setAdapter(adapter);
+
 //        temp = findViewById(R.id.temperatura);
 
 
+    }
+
+    @Override
+    public void onItemClick(View view, int positon) {
+        Toast.makeText(this, "Item: " + adapter.getItem(positon), Toast.LENGTH_SHORT).show();
     }
 
     public void addNewDevice(ServerDevice s) {
