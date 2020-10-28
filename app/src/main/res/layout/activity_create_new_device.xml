@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#E4000000"
-    tools:context=".Functionality.CreateNewDevice">
+    tools:context=".Activities.CreateNewDevice">
 
     <EditText
         android:id="@+id/etDeviceName"

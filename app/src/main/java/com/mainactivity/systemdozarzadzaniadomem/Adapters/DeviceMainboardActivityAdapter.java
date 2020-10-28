@@ -9,70 +9,62 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.mainactivity.systemdozarzadzaniadomem.Models.ServerDevice;
 import com.mainactivity.systemdozarzadzaniadomem.R;
 
 import java.util.ArrayList;
 
-public class MainActivityAdapter extends RecyclerView.Adapter<MainActivityAdapter.ViewHolder> {
+public class DeviceMainboardActivityAdapter extends RecyclerView.Adapter<DeviceMainboardActivityAdapter.ViewHolder> {
 
-    private ArrayList<ServerDevice> data;
-    private LayoutInflater mInflater;
+    private ArrayList<String> topics;
+    private LayoutInflater inflater;
     private ItemClickListener itemClickListener;
 
-    public MainActivityAdapter(ArrayList<ServerDevice> data, Context context) {
-        this.data = data;
-        this.mInflater = LayoutInflater.from(context);
+
+    public DeviceMainboardActivityAdapter(Context context, ArrayList<String> topics) {
+        this.inflater = LayoutInflater.from(context);
+        this.topics = topics;
     }
 
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = mInflater.inflate(R.layout.activity_main_row, parent, false);
+        View view = inflater.inflate(R.layout.activity_devicemainboard_item, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        String deviceName = data.get(position).getDeviceName();
-        holder.tvServerDevice.setText(deviceName);
+        String topic = topics.get(position);
+        holder.tvTopic.setText(topic);
+
     }
 
     @Override
     public int getItemCount() {
-        return this.data.size();
+        return this.topics.size();
     }
 
-    public void removeItem(int position) {
-        data.remove(position);
-        notifyItemRemoved(position);
+    public void setOnClickListener(ItemClickListener itemClickListener) {
+        this.itemClickListener = itemClickListener;
     }
 
-    public void restoreItem(ServerDevice item, int position) {
-        data.add(position, item);
-        notifyItemInserted(position);
-    }
-
-    /**
-     * przechowuje i przetwarza widoki przewijane poza ekran
-     */
     public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
 
-        TextView tvServerDevice;
+        TextView tvTopic;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvServerDevice = itemView.findViewById(R.id.tvServerDeviceName);
+            tvTopic = itemView.findViewById(R.id.tvTopicName);
             itemView.setOnClickListener(this);
-            itemView.setOnLongClickListener(this);
+            itemView.setOnClickListener(this);
         }
 
         @Override
         public void onClick(View v) {
-            if (itemClickListener != null)
+            if (itemClickListener != null) {
                 itemClickListener.onItemClick(v, getAdapterPosition());
+            }
         }
-
 
         @Override
         public boolean onLongClick(View v) {
@@ -84,22 +76,9 @@ public class MainActivityAdapter extends RecyclerView.Adapter<MainActivityAdapte
         }
     }
 
-    public void setOnCLickListener(ItemClickListener item) {
-        this.itemClickListener = item;
-    }
-
-    public String getItemName(int id) {
-        return data.get(id).getDeviceName();
-    }
-
-    public ServerDevice getItem(int id) {
-        return data.get(id);
-    }
-
     public interface ItemClickListener {
-        void onItemClick(View view, int positon);
+        void onItemClick(View view, int position);
 
         void onLongItemClick(View view, int position);
     }
-
 }

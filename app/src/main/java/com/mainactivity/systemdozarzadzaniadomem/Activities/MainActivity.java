@@ -1,49 +1,46 @@
 package com.mainactivity.systemdozarzadzaniadomem.Activities;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
-import android.os.PersistableBundle;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.EdgeEffect;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.snackbar.Snackbar;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.mainactivity.systemdozarzadzaniadomem.Adapters.MainActivityAdapter;
-import com.mainactivity.systemdozarzadzaniadomem.Functionality.CreateNewDevice;
+import com.mainactivity.systemdozarzadzaniadomem.Functionality.SwipieToDeleteCallback;
 import com.mainactivity.systemdozarzadzaniadomem.Models.ServerDevice;
 import com.mainactivity.systemdozarzadzaniadomem.R;
-
-import org.eclipse.paho.android.service.MqttAndroidClient;
-import org.eclipse.paho.client.mqttv3.*;
 
 import java.io.Serializable;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Objects;
 
 
-public class MainActivity extends AppCompatActivity implements MqttCallback, Serializable, MainActivityAdapter.ItemClickListener {
+public class MainActivity extends AppCompatActivity implements Serializable, MainActivityAdapter.ItemClickListener {
 
-    private static final String TAG = "ELO";
+    private static final String TAG = "MainActivity";
     ArrayList<ServerDevice> devices = new ArrayList<>();
     SharedPreferences preferences;
     private final String key = "Devices";
     MainActivityAdapter adapter;
+    CoordinatorLayout coordinatorLayout;
+    RecyclerView recyclerView;
+
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
@@ -72,8 +69,11 @@ public class MainActivity extends AppCompatActivity implements MqttCallback, Ser
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        RecyclerView recyclerView = findViewById(R.id.rvServerDevices);
+        recyclerView = findViewById(R.id.rvServerDevices);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        coordinatorLayout = findViewById(R.id.coordinatorLayout);
+
+
 
 
         String JSONstring = getPreferences(MODE_PRIVATE).getString(key, null);
@@ -83,9 +83,14 @@ public class MainActivity extends AppCompatActivity implements MqttCallback, Ser
         if (getPreferences(MODE_PRIVATE).contains(key)) {
             devices = new Gson().fromJson(JSONstring, type);
         }
+
         if (getIntent().hasExtra("newDevice")) {
             ServerDevice serverDevice = (ServerDevice) getIntent().getSerializableExtra("newDevice");
             addNewDevice(serverDevice);
+        } else if (getIntent().hasExtra("editedDevice")) {
+            ServerDevice serverDevice = (ServerDevice) getIntent().getSerializableExtra("editedDevice");
+            int position = getIntent().getIntExtra("position", -1);
+            updateDevice(serverDevice, position);
         }
 
 
@@ -93,15 +98,59 @@ public class MainActivity extends AppCompatActivity implements MqttCallback, Ser
         adapter.setOnCLickListener(this);
         recyclerView.setAdapter(adapter);
 
+        swipeToDeleteAndUndo();
+
 //        temp = findViewById(R.id.temperatura);
 
 
     }
 
+    private void swipeToDeleteAndUndo() {
+        SwipieToDeleteCallback swipieToDeleteCallback = new SwipieToDeleteCallback(this) {
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                final int position = viewHolder.getAdapterPosition();
+                final ServerDevice item = adapter.getItem(position);
+                adapter.removeItem(position);
+
+                Snackbar snackbar = Snackbar.make(coordinatorLayout, "Usunięto element", Snackbar.LENGTH_LONG);
+
+                snackbar.setAction("undo", new View.OnClickListener() {
+
+                    @Override
+                    public void onClick(View v) {
+                        adapter.restoreItem(item, position);
+                        recyclerView.scrollToPosition(position);
+                    }
+                });
+
+                snackbar.setActionTextColor(Color.CYAN);
+                snackbar.show();
+            }
+        };
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(swipieToDeleteCallback);
+        itemTouchHelper.attachToRecyclerView(recyclerView);
+    }
+
     @Override
     public void onItemClick(View view, int positon) {
-        Toast.makeText(this, "Item: " + adapter.getItem(positon), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Nawiązuję połączenie z " + adapter.getItemName(positon) + " " + positon, Toast.LENGTH_SHORT).show();
+        ServerDevice device = adapter.getItem(positon);
+        Intent intent = new Intent(getApplicationContext(), DeviceMainboardActivity.class);
+        intent.putExtra("device", device);
+        startActivity(intent);
     }
+
+    @Override
+    public void onLongItemClick(View view, int position) {
+        Toast.makeText(this, "Edycja urządzenia " + adapter.getItemName(position) + " " + position, Toast.LENGTH_SHORT).show();
+        ServerDevice device = adapter.getItem(position);
+        Intent intent = new Intent(getApplicationContext(), CreateNewDevice.class);
+        intent.putExtra("oldDevice", device);
+        intent.putExtra("position", position);
+        startActivity(intent);
+    }
+
 
     public void addNewDevice(ServerDevice s) {
 
@@ -111,13 +160,12 @@ public class MainActivity extends AppCompatActivity implements MqttCallback, Ser
 
         if (devices.isEmpty()) {
             devices.add(s);
-            //TODO:
             String json = new Gson().toJson(devices);
             editor.putString(key, json);
             editor.commit();
             Log.d(TAG, "dodano urzadzenie " + s.toString());
-            Toast msg = Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG);
-            msg.show();
+           Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG).show();
+
         } else {
             for (int i = 0; i < devices.size(); i++) {
                 if (devices.get(i).getClientID().equals(s.getClientID())) {
@@ -128,8 +176,7 @@ public class MainActivity extends AppCompatActivity implements MqttCallback, Ser
                     editor.putString(key, json);
                     editor.commit();
                     Log.d(TAG, "dodano urzadzenie " + s.toString());
-                    Toast msg = Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG);
-                    msg.show();
+                    Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG).show();
                     exist = false;
                     break;
                 }
@@ -137,82 +184,26 @@ public class MainActivity extends AppCompatActivity implements MqttCallback, Ser
         }
 
         if (exist) {
-            Toast msg = Toast.makeText(getApplicationContext(), "Takie urządzenie już istnieje", Toast.LENGTH_LONG);
+           Toast.makeText(getApplicationContext(), "Takie urządzenie już istnieje", Toast.LENGTH_LONG).show();
             String json = new Gson().toJson(devices);
             editor.putString(key, json);
             editor.commit();
-            msg.show();
         }
     }
 
-    public void serwerConnection() {
-        try {
-            String clientId = MqttClient.generateClientId();
+    public void updateDevice(ServerDevice s, int position) {
+        SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
 
-            MqttAndroidClient client = new MqttAndroidClient(this, "tcp://192.168.1.20:1883", clientId);
-            /*
-             * Metoda służąca do nasłuchiwania:
-             * wiadomość dotarła jest gotowa do przetworzenia
-             * czy połączenie zostało zerwane
-             * wiadomosc zostala wyslana do serwera
-             * */
-            client.setCallback(this);
+        devices.get(position).setClientID(s.getClientID());
+        devices.get(position).setDeviceIP(s.getDeviceIP());
+        devices.get(position).setDeviceName(s.getDeviceName());
+        devices.get(position).setPort(s.getPort());
 
-
-            client.connect(new MqttConnectOptions(), null, new IMqttActionListener() {
-                @Override
-                public void onSuccess(IMqttToken asyncActionToken) {
-                    Log.d(TAG, "UDALO SIE POLACZYC ");
-                    try {
-                        asyncActionToken.getClient().subscribe("temperatura", 1, null, new IMqttActionListener() {
-                            @Override
-                            public void onSuccess(IMqttToken asyncActionToken) {
-                                IMqttMessageListener mqttMessageListener = new IMqttMessageListener() {
-                                    @Override
-                                    public void messageArrived(String topic, MqttMessage message) throws Exception {
-                                        Log.d(TAG, "Pobieram Dane " + topic);
-//                                        temp.setText(message.toString());
-                                    }
-                                };
-                            }
-
-                            @Override
-                            public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-
-                            }
-                        });
-                    } catch (MqttException e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                @Override
-                public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                    Log.d(TAG, "NIE UDALO SIE POLACZYC " + exception.getMessage());
-                }
-
-            });
-
-
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+        String json = new Gson().toJson(devices);
+        editor.putString(key, json);
+        editor.commit();
+        Log.d(TAG, "Edytowano urządzenie " + s.toString());
+        Toast.makeText(getApplicationContext(), "Udało się edytować wybrane urządzenie", Toast.LENGTH_LONG).show();
     }
 
-    @Override
-    public void connectionLost(Throwable cause) {
-        Log.d(TAG, "connectionLost");
     }
-
-    @Override
-    public void messageArrived(String topic, MqttMessage message) throws Exception {
-        Log.d(TAG, topic);
-        String temperatura = message.toString();
-//        temp.setText(temperatura);
-    }
-
-    @Override
-    public void deliveryComplete(IMqttDeliveryToken token) {
-        Log.d(TAG, "deliveryComplete");
-    }
-}
