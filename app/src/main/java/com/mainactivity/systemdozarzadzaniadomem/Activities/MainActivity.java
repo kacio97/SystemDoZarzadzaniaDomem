@@ -74,8 +74,6 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
         coordinatorLayout = findViewById(R.id.coordinatorLayout);
 
 
-
-
         String JSONstring = getPreferences(MODE_PRIVATE).getString(key, null);
         Type type = new TypeToken<ArrayList<ServerDevice>>() {
         }.getType();
@@ -100,9 +98,6 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
 
         swipeToDeleteAndUndo();
 
-//        temp = findViewById(R.id.temperatura);
-
-
     }
 
     private void swipeToDeleteAndUndo() {
@@ -112,6 +107,7 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
                 final int position = viewHolder.getAdapterPosition();
                 final ServerDevice item = adapter.getItem(position);
                 adapter.removeItem(position);
+                updateDeviceList(devices);
 
                 Snackbar snackbar = Snackbar.make(coordinatorLayout, "Usunięto element", Snackbar.LENGTH_LONG);
 
@@ -120,6 +116,7 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
                     @Override
                     public void onClick(View v) {
                         adapter.restoreItem(item, position);
+                        updateDeviceList(devices);
                         recyclerView.scrollToPosition(position);
                     }
                 });
@@ -153,18 +150,13 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
 
 
     public void addNewDevice(ServerDevice s) {
-
-        SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
-
         boolean exist = false;
 
         if (devices.isEmpty()) {
             devices.add(s);
-            String json = new Gson().toJson(devices);
-            editor.putString(key, json);
-            editor.commit();
+            updateDeviceList(devices);
             Log.d(TAG, "dodano urzadzenie " + s.toString());
-           Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG).show();
+            Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG).show();
 
         } else {
             for (int i = 0; i < devices.size(); i++) {
@@ -172,9 +164,7 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
                     exist = true;
                 } else {
                     devices.add(s);
-                    String json = new Gson().toJson(devices);
-                    editor.putString(key, json);
-                    editor.commit();
+                    updateDeviceList(devices);
                     Log.d(TAG, "dodano urzadzenie " + s.toString());
                     Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG).show();
                     exist = false;
@@ -184,26 +174,29 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
         }
 
         if (exist) {
-           Toast.makeText(getApplicationContext(), "Takie urządzenie już istnieje", Toast.LENGTH_LONG).show();
-            String json = new Gson().toJson(devices);
-            editor.putString(key, json);
-            editor.commit();
+            Toast.makeText(getApplicationContext(), "Takie urządzenie już istnieje", Toast.LENGTH_LONG).show();
+            updateDeviceList(devices);
         }
     }
 
     public void updateDevice(ServerDevice s, int position) {
-        SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
-
         devices.get(position).setClientID(s.getClientID());
         devices.get(position).setDeviceIP(s.getDeviceIP());
         devices.get(position).setDeviceName(s.getDeviceName());
         devices.get(position).setPort(s.getPort());
 
-        String json = new Gson().toJson(devices);
-        editor.putString(key, json);
-        editor.commit();
+        updateDeviceList(devices);
+
         Log.d(TAG, "Edytowano urządzenie " + s.toString());
         Toast.makeText(getApplicationContext(), "Udało się edytować wybrane urządzenie", Toast.LENGTH_LONG).show();
     }
 
+    private void updateDeviceList(ArrayList<ServerDevice> devices) {
+        SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
+        String json = new Gson().toJson(devices);
+        editor.clear();
+        editor.putString(key, json);
+        editor.commit();
     }
+
+}

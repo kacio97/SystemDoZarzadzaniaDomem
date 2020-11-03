@@ -14,7 +14,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".Activities.DeviceMainboardActivity"></activity>
+        <activity android:name=".Activities.CreateModuleActivity"></activity>
+        <activity android:name=".Activities.DeviceMainboardActivity" />
         <activity android:name=".Activities.CreateNewDevice" />
         <activity android:name=".Activities.MainActivity">
             <intent-filter>
