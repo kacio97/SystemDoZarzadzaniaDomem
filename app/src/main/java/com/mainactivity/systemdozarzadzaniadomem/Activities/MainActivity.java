@@ -12,6 +12,7 @@ import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.recyclerview.widget.ItemTouchHelper;
@@ -34,21 +35,22 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity implements Serializable, MainActivityAdapter.ItemClickListener {
 
     private static final String TAG = "MainActivity";
+    private final String key = "Devices";
+    private static final int CREATE_NEW_DEVICE_REQUEST_CODE = 1;
+    private static final int UPDATE_DEVICE_REQUEST_CODE = 2;
     ArrayList<ServerDevice> devices = new ArrayList<>();
     SharedPreferences preferences;
-    private final String key = "Devices";
     MainActivityAdapter adapter;
     CoordinatorLayout coordinatorLayout;
     RecyclerView recyclerView;
-
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch (item.getItemId()) {
             case R.id.addNewDevice: {
                 Intent intent = new Intent(getApplicationContext(), CreateNewDevice.class);
-                startActivity(intent);
-                return true;
+                startActivityForResult(intent, CREATE_NEW_DEVICE_REQUEST_CODE);
+//                return true;
             }
             default:
                 return super.onOptionsItemSelected(item);
@@ -82,14 +84,11 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
             devices = new Gson().fromJson(JSONstring, type);
         }
 
-        if (getIntent().hasExtra("newDevice")) {
-            ServerDevice serverDevice = (ServerDevice) getIntent().getSerializableExtra("newDevice");
-            addNewDevice(serverDevice);
-        } else if (getIntent().hasExtra("editedDevice")) {
-            ServerDevice serverDevice = (ServerDevice) getIntent().getSerializableExtra("editedDevice");
-            int position = getIntent().getIntExtra("position", -1);
-            updateDevice(serverDevice, position);
-        }
+//        if (getIntent().hasExtra("newDevice")) {
+//
+//        } else if (getIntent().hasExtra("editedDevice")) {
+//
+//        }
 
 
         adapter = new MainActivityAdapter(devices, getApplicationContext());
@@ -98,6 +97,32 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
 
         swipeToDeleteAndUndo();
 
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == CREATE_NEW_DEVICE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                ServerDevice serverDevice = (ServerDevice) data.getSerializableExtra("newDevice");
+                addNewDevice(serverDevice);
+                //ODSWIEZANIE ACTIVITY :)
+                Intent intent = getIntent();
+                finish();
+                startActivity(intent);
+            }
+        } else if (requestCode == UPDATE_DEVICE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                ServerDevice serverDevice = (ServerDevice) data.getSerializableExtra("editedDevice");
+                int position = data.getIntExtra("position", -1);
+                updateDevice(serverDevice, position);
+                //ODSWIEZANIE ACTIVITY :)
+                Intent intent = getIntent();
+                finish();
+                startActivity(intent);
+            }
+        }
     }
 
     private void swipeToDeleteAndUndo() {
@@ -133,8 +158,9 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
     public void onItemClick(View view, int positon) {
         Toast.makeText(this, "Nawiązuję połączenie z " + adapter.getItemName(positon) + " " + positon, Toast.LENGTH_SHORT).show();
         ServerDevice device = adapter.getItem(positon);
+        MyApplication.getInstance().setDevice(device);
         Intent intent = new Intent(getApplicationContext(), DeviceMainboardActivity.class);
-        intent.putExtra("device", device);
+        intent.putExtra("device", device.getDeviceName());
         startActivity(intent);
     }
 
@@ -145,7 +171,7 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
         Intent intent = new Intent(getApplicationContext(), CreateNewDevice.class);
         intent.putExtra("oldDevice", device);
         intent.putExtra("position", position);
-        startActivity(intent);
+        startActivityForResult(intent, UPDATE_DEVICE_REQUEST_CODE);
     }
 
 
@@ -157,25 +183,23 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
             updateDeviceList(devices);
             Log.d(TAG, "dodano urzadzenie " + s.toString());
             Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG).show();
-
         } else {
             for (int i = 0; i < devices.size(); i++) {
                 if (devices.get(i).getClientID().equals(s.getClientID())) {
                     exist = true;
-                } else {
-                    devices.add(s);
-                    updateDeviceList(devices);
-                    Log.d(TAG, "dodano urzadzenie " + s.toString());
-                    Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG).show();
-                    exist = false;
                     break;
                 }
             }
-        }
-
-        if (exist) {
-            Toast.makeText(getApplicationContext(), "Takie urządzenie już istnieje", Toast.LENGTH_LONG).show();
-            updateDeviceList(devices);
+            if (exist) {
+                Toast.makeText(getApplicationContext(), "Takie urządzenie już istnieje", Toast.LENGTH_LONG).show();
+//                updateDeviceList(devices); // TODO: CZY jest sens to aktualizować ?
+            } else {
+                devices.add(s);
+                updateDeviceList(devices);
+                Log.d(TAG, "dodano urzadzenie " + s.toString());
+                Toast.makeText(getApplicationContext(), "Udało się dodać nowe urządzenie", Toast.LENGTH_LONG).show();
+                updateDeviceList(devices);
+            }
         }
     }
 

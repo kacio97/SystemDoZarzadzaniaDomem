@@ -1,5 +1,6 @@
 package com.mainactivity.systemdozarzadzaniadomem.Activities;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -26,9 +27,11 @@ public class CreateModuleActivity extends AppCompatActivity {
             public void onClick(View v) {
                 String topic = String.valueOf(etTopic.getText());
 
+                //TODO: Zaimplementować startActivityForResult ! POCZYTAć !
                 Intent intent = new Intent(getApplicationContext(), DeviceMainboardActivity.class);
                 intent.putExtra("topicText", topic);
-                startActivity(intent);
+                setResult(Activity.RESULT_OK, intent);
+                finish();
             }
         });
 

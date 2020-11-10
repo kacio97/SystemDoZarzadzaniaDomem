@@ -8,6 +8,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -22,7 +23,6 @@ import com.mainactivity.systemdozarzadzaniadomem.R;
 import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.client.mqttv3.IMqttActionListener;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
@@ -31,16 +31,22 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class DeviceMainboardActivity extends AppCompatActivity implements MqttCallback, DeviceMainboardActivityAdapter.ItemClickListener {
 
     private static final String TAG = "DeviceMainBoardAcitivty";
     private static final String TAG_SERVER_CON = "ServerConnection";
+    private static final int CREATE_MODULE_REQUEST_CODE = 1;
     private ArrayList<String> topics = new ArrayList<>();
+    private final HashMap<String, String> topicsAndValues = new HashMap<>();
+
     MqttAndroidClient client;
     FloatingActionButton actionButton;
     DeviceMainboardActivityAdapter adapter;
     private final String key = "Topics";
+    private String topicValue;
+    private String deviceName;
 
 
     @Override
@@ -50,82 +56,121 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
         RecyclerView recyclerView = findViewById(R.id.rvTopics);
         int numberOfColumn = 2;
         recyclerView.setLayoutManager(new GridLayoutManager(this, numberOfColumn));
+        deviceName = getIntent().getStringExtra("device");
 
-        String JSONstring = getPreferences(MODE_PRIVATE).getString(key, null);
+        String JSONstring = getPreferences(MODE_PRIVATE).getString(key + deviceName, null);
         Type type = new TypeToken<ArrayList<String>>() {
         }.getType();
 
-        if (getPreferences(MODE_PRIVATE).contains(key)) {
+        if (getPreferences(MODE_PRIVATE).contains(key + deviceName)) {
             topics = new Gson().fromJson(JSONstring, type);
         }
 
-        if (getIntent().hasExtra("topicText")) {
-            addNewTopic(getIntent().getStringExtra("topicText"));
+        for (int i = 0; i < topics.size(); i++) {
+            topicsAndValues.put(topics.get(i), "");
         }
 
-        adapter = new DeviceMainboardActivityAdapter(this, topics);
+        //Jak aktualizować dane dla danego modułu ?
+        //Tzn mamy jakiś kafel z tematem i czy aktualizacja jednego z TextView robie prawidłowo ?
+        adapter = new DeviceMainboardActivityAdapter(this, topics, topicsAndValues);
         adapter.setOnClickListener(this);
         recyclerView.setAdapter(adapter);
-        actionButton = findViewById(R.id.fabAddNewModule);
 
+        actionButton = findViewById(R.id.fabAddNewModule);
         actionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(getApplicationContext(), CreateModuleActivity.class);
-                startActivity(intent);
+                startActivityForResult(intent, CREATE_MODULE_REQUEST_CODE);
             }
         });
 
-        if (getIntent().hasExtra("device")) {
-            ServerDevice serverDevice = (ServerDevice) getIntent().getSerializableExtra("device");
-            client = new MqttAndroidClient(this, "tcp://" + serverDevice.getDeviceIP(), serverDevice.getClientID());
-            /*
-             * Metoda służąca do nasłuchiwania:
-             * wiadomość dotarła jest gotowa do przetworzenia
-             * czy połączenie zostało zerwane
-             * wiadomosc zostala wyslana do serwera
-             * */
-            client.setCallback(this);
-            try {
-                client.connect(new MqttConnectOptions(), null, new IMqttActionListener() {
-                    @SuppressLint("RestrictedApi")
-                    @Override
-                    public void onSuccess(IMqttToken asyncActionToken) {
-                        Log.d(TAG_SERVER_CON, "UDALO SIE POLACZYC ");
-                        Toast.makeText(getApplicationContext(), "Nawiązano połączenie z serwerem " + client.getServerURI(), Toast.LENGTH_LONG).show();
-                        actionButton.setVisibility(View.VISIBLE);
-                    }
+        ServerDevice s = MyApplication.getInstance().getDevice(getIntent().getStringExtra("device"));
+        client = new MqttAndroidClient(this, "tcp://" + s.getDeviceIP(), s.getClientID());
 
-                    @SuppressLint("RestrictedApi")
-                    @Override
-                    public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                        Log.d(TAG_SERVER_CON, "NIE UDALO SIE POLACZYC " + exception.getMessage());
-                        Toast.makeText(getApplicationContext(), "Nie udało się nawiązać połączenia z serwerem " + client.getServerURI(), Toast.LENGTH_LONG).show();
-                        actionButton.setVisibility(View.INVISIBLE);
-                    }
+        /*
+         * Metoda służąca do nasłuchiwania:
+         * wiadomość dotarła jest gotowa do przetworzenia
+         * czy połączenie zostało zerwane
+         * wiadomosc zostala wyslana do serwera
+         * */
+        client.setCallback(this);
+        connectClient();
 
-                });
+    }
 
-            } catch (MqttException e) {
-                e.printStackTrace();
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == CREATE_MODULE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                addNewTopic(data.getStringExtra("topicText"));
+                adapter.notifyDataSetChanged();
+//                Intent intent = getIntent();
+//                finish();
+//                startActivity(intent);
             }
-
         }
     }
 
+    private void connectClient() {
+        MqttConnectOptions options = new MqttConnectOptions();
+        options.setAutomaticReconnect(true);
+        options.setCleanSession(false);
+        try {
+            client.connect(options, null, new IMqttActionListener() {
+                @SuppressLint("RestrictedApi")
+                @Override
+                public void onSuccess(IMqttToken asyncActionToken) {
+                    Log.d(TAG_SERVER_CON, "UDALO SIE POLACZYC ");
+                    Toast.makeText(getApplicationContext(), "Nawiązano połączenie z serwerem " + client.getServerURI(), Toast.LENGTH_LONG).show();
+                    actionButton.setVisibility(View.VISIBLE);
+
+                    //Połączenie jest ale czy subskrybcja tematów jest okej ? Bo to chyba nie tak powinno być.
+                    //Myślałem że w pętli może by pykło ale po przemyśleniu to chyba średni pomysł
+                    for (int i = 0; i < topics.size(); i++) {
+//                        subscribeTopic(topics.get(i), asyncActionToken, i);
+                        try {
+                            client.subscribe(topics.get(i), 1);
+                        } catch (MqttException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+                @SuppressLint("RestrictedApi")
+                @Override
+                public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                    Log.d(TAG_SERVER_CON, "NIE UDALO SIE POLACZYC " + exception.getMessage());
+                    Toast.makeText(getApplicationContext(), "Nie udało się nawiązać połączenia z serwerem " + client.getServerURI(), Toast.LENGTH_LONG).show();
+                    actionButton.setVisibility(View.INVISIBLE);
+                }
+
+            });
+
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+
+    }
 
     private void addNewTopic(String topic) {
+        boolean exist = false;
+
         if (topics.isEmpty()) {
             topics.add(topic);
             Toast.makeText(getApplicationContext(), "Dodano nowy temat", Toast.LENGTH_SHORT).show();
             updateTopicList(topics);
-        }
-
-        for (int i = 0; i < topics.size(); i++) {
-            if (topics.get(i).equals(topic)) {
+        } else {
+            for (int i = 0; i < topics.size(); i++) {
+                if (topics.get(i).equals(topic)) {
+                    exist = true;
+                    break;
+                }
+            }
+            if (exist) {
                 Toast.makeText(getApplicationContext(), "Taki temat już istnieje", Toast.LENGTH_SHORT).show();
-                break;
-
             } else {
                 topics.add(topic);
                 Toast.makeText(getApplicationContext(), "Dodano nowy temat", Toast.LENGTH_SHORT).show();
@@ -138,32 +183,8 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
         SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
         String json = new Gson().toJson(topics);
         editor.clear();
-        editor.putString(key, json);
+        editor.putString(key + deviceName, json);
         editor.commit();
-    }
-
-    private void subscribeTopic(String topic, IMqttToken asyncActionToken) {
-        try {
-            asyncActionToken.getClient().subscribe(topic, 1, null, new IMqttActionListener() {
-                @Override
-                public void onSuccess(IMqttToken asyncActionToken) {
-                    IMqttMessageListener mqttMessageListener = new IMqttMessageListener() {
-                        @Override
-                        public void messageArrived(String topic, MqttMessage message) throws Exception {
-                            Log.d(TAG, "Pobieram Dane " + topic);
-//                                        temp.setText(message.toString());
-                        }
-                    };
-                }
-
-                @Override
-                public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-
-                }
-            });
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
     }
 
     @SuppressLint("RestrictedApi")
@@ -177,8 +198,10 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
     @Override
     public void messageArrived(String topic, MqttMessage message) throws Exception {
         Log.d(TAG, topic);
-        String temperatura = message.toString();
-//        temp.setText(temperatura);
+        for (int i = 0; i < topics.size(); i++) {
+            topicsAndValues.put(topic, message.toString());
+        }
+        adapter.notifyDataSetChanged();
     }
 
     @Override
@@ -196,5 +219,34 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
 
     }
 
+
+//    private void subscribeTopic(String topic, IMqttToken asyncActionToken, int position) {
+//        try {
+//            client.subscribe(topic, 1, null, new IMqttActionListener() {
+//                @Override
+//                public void onSuccess(IMqttToken asyncActionToken) {
+//                    IMqttMessageListener mqttMessageListener = new IMqttMessageListener() {
+//                        @Override
+//                        public void messageArrived(String topic, MqttMessage message) throws Exception {
+//                            Log.d(TAG, "Pobieram Dane " + topic);
+//                            // Niby tutaj sobie to przekazuje do adaptera ale nie jestem przekonany że tak to ma wyglądać
+//                            // Według mnie po prostu znikają mi pewne intenty i tracę część informacji do ustalania co to za
+//                            //urządzenie i jakie posiada tematy, więc wszystko sprowadza się do tego Application.class
+//                            // którego nie bardzo wiem jak zastosować bo samo to o co w tym chodzi to mniej więcej rozumiem
+//                            topicValue = message.toString();
+//
+//                        }
+//                    };
+//                }
+//
+//                @Override
+//                public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+//
+//                }
+//            });
+//        } catch (MqttException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
 }

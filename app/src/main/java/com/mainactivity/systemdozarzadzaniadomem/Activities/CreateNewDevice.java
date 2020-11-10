@@ -1,5 +1,6 @@
 package com.mainactivity.systemdozarzadzaniadomem.Activities;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
@@ -60,19 +61,21 @@ public class CreateNewDevice extends AppCompatActivity implements Serializable {
                     serverDevice.setDeviceName(deviceName.getText().toString());
                     serverDevice.setClientID(clientID.getText().toString());
                     serverDevice.setPort(port.getText().toString());
-                    Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                    Intent intent = new Intent();
                     intent.putExtra("editedDevice", serverDevice);
                     intent.putExtra("position", getIntent().getSerializableExtra("position"));
-                    startActivity(intent);
+                    setResult(Activity.RESULT_OK, intent);
+                    finish();
                 } else {
                     ServerDevice device = new ServerDevice();
                     device.setDeviceIP(adressIP.getText().toString());
                     device.setDeviceName(deviceName.getText().toString());
                     device.setClientID(clientID.getText().toString());
                     device.setPort(port.getText().toString());
-                    Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                    Intent intent = new Intent();
                     intent.putExtra("newDevice", device);
-                    startActivity(intent);
+                    setResult(Activity.RESULT_OK, intent);
+                    finish();
                 }
 
 
