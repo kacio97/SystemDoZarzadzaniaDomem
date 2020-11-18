@@ -7,26 +7,25 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.mainactivity.systemdozarzadzaniadomem.Models.TopicModel;
 import com.mainactivity.systemdozarzadzaniadomem.R;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 public class DeviceMainboardActivityAdapter extends RecyclerView.Adapter<DeviceMainboardActivityAdapter.ViewHolder> {
 
-    private final ArrayList<String> topics;
+//    private HashMap<String, String> values;
     private final LayoutInflater inflater;
     private ItemClickListener itemClickListener;
-    private final HashMap<String, String> topicsValue;
+    private final HashMap<String, TopicModel> topics;
 
 
-    public DeviceMainboardActivityAdapter(Context context, ArrayList<String> topics, @Nullable HashMap<String, String> topicsValue) {
+    public DeviceMainboardActivityAdapter(Context context,HashMap<String, TopicModel> topics) {
         this.inflater = LayoutInflater.from(context);
         this.topics = topics;
-        this.topicsValue = topicsValue;
     }
 
     @NonNull
@@ -38,11 +37,23 @@ public class DeviceMainboardActivityAdapter extends RecyclerView.Adapter<DeviceM
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        String topic = topics.get(position);
-        String topicValue = this.topicsValue.get(topic);
-        holder.tvTopic.setText(topic);
-        holder.tvTopicInfo.setText(topicValue);
+        TopicModel topic = topics.get((topics.keySet().toArray())[position]);
+//        String topicValue = getHashMapKeyFromIndex(topicsValue, position);
+        holder.tvTopic.setText(topic.getTopicName());
+        holder.tvTopicInfo.setText(topic.getValue());
+    }
 
+    public static String getHashMapKeyFromIndex(HashMap<String, String> hashMap, int index){
+        String key = null;
+        int pos=0;
+        for(Map.Entry<String, String> entry : hashMap.entrySet())
+        {
+            if(index==pos){
+                key=entry.getKey();
+            }
+            pos++;
+        }
+        return key;
     }
 
     @Override
@@ -52,6 +63,11 @@ public class DeviceMainboardActivityAdapter extends RecyclerView.Adapter<DeviceM
 
     public void setOnClickListener(ItemClickListener itemClickListener) {
         this.itemClickListener = itemClickListener;
+    }
+
+    public void removeItem(String key, int position) {
+        topics.remove(key);
+        notifyItemRemoved(position);
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {

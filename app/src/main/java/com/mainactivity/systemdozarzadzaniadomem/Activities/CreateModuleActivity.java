@@ -19,17 +19,22 @@ public class CreateModuleActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_module);
 
-        final EditText etTopic = findViewById(R.id.etTopicText);
+        final EditText etTopicTitle = findViewById(R.id.etTopicText);
+        final EditText etTopicValue = findViewById(R.id.etTopicValue);
         Button btSaveTopic = findViewById(R.id.btSaveTopic);
+        if (getIntent().hasExtra("topicName")) {
+
+        }
 
         btSaveTopic.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String topic = String.valueOf(etTopic.getText());
+                String topicTitle = String.valueOf(etTopicTitle.getText());
+                String topicValue = String.valueOf(etTopicValue.getText());
 
-                //TODO: Zaimplementować startActivityForResult ! POCZYTAć !
                 Intent intent = new Intent(getApplicationContext(), DeviceMainboardActivity.class);
-                intent.putExtra("topicText", topic);
+                intent.putExtra("topicTitle", topicTitle);
+                intent.putExtra("topicValue", topicValue);
                 setResult(Activity.RESULT_OK, intent);
                 finish();
             }
