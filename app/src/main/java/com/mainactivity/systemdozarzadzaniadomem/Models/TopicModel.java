@@ -3,6 +3,15 @@ package com.mainactivity.systemdozarzadzaniadomem.Models;
 public class TopicModel {
     private String topicName;
     private String value;
+    private String typeOfTopic;
+
+    public String getTypeOfTopic() {
+        return typeOfTopic;
+    }
+
+    public void setTypeOfTopic(String typeOfTopic) {
+        this.typeOfTopic = typeOfTopic;
+    }
 
     public String getTopicName() {
         return topicName;

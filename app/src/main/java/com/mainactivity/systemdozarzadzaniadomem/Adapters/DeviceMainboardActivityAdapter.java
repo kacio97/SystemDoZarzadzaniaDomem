@@ -17,6 +17,8 @@ import java.util.Map;
 
 public class DeviceMainboardActivityAdapter extends RecyclerView.Adapter<DeviceMainboardActivityAdapter.ViewHolder> {
 
+
+
 //    private HashMap<String, String> values;
     private final LayoutInflater inflater;
     private ItemClickListener itemClickListener;

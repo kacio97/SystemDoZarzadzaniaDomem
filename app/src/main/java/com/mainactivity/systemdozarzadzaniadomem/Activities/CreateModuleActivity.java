@@ -13,6 +13,7 @@ import com.mainactivity.systemdozarzadzaniadomem.R;
 
 public class CreateModuleActivity extends AppCompatActivity {
 
+    String topicType = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,8 +23,9 @@ public class CreateModuleActivity extends AppCompatActivity {
         final EditText etTopicTitle = findViewById(R.id.etTopicText);
         final EditText etTopicValue = findViewById(R.id.etTopicValue);
         Button btSaveTopic = findViewById(R.id.btSaveTopic);
-        if (getIntent().hasExtra("topicName")) {
 
+        if (getIntent().hasExtra("type")) {
+            topicType = getIntent().getStringExtra("type");
         }
 
         btSaveTopic.setOnClickListener(new View.OnClickListener() {
@@ -35,6 +37,7 @@ public class CreateModuleActivity extends AppCompatActivity {
                 Intent intent = new Intent(getApplicationContext(), DeviceMainboardActivity.class);
                 intent.putExtra("topicTitle", topicTitle);
                 intent.putExtra("topicValue", topicValue);
+                intent.putExtra("topicType", topicType);
                 setResult(Activity.RESULT_OK, intent);
                 finish();
             }

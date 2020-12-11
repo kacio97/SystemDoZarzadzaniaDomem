@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -36,13 +37,17 @@ import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
+//TODO: odswiezanie na onSwipe w dol lub ewentulanie auto-refresh dla GUI jak to zrobic ?
 public class DeviceMainboardActivity extends AppCompatActivity implements MqttCallback, DeviceMainboardActivityAdapter.ItemClickListener {
 
     private static final String TAG = "DeviceMainBoardAcitivty";
     private static final String TAG_SERVER_CON = "ServerConnection";
     private static final int CREATE_MODULE_REQUEST_CODE = 1;
+    private static final int SET_LED_COLOR = 2;
     private HashMap<String, TopicModel> topics = new HashMap<>();
-//    private HashMap<String, String> values = new HashMap<>();
+    //    private HashMap<String, String> values = new HashMap<>();
+    RecyclerView recyclerView;
+    Handler handler;
 
 
     MqttAndroidClient client;
@@ -51,16 +56,22 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
     private final String key = "Topics";
     private String topicValue;
     private String deviceName;
+    //    TODO:
+    private boolean isOn = false;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device_mainboard);
-        RecyclerView recyclerView = findViewById(R.id.rvTopics);
+        //        RecyclerView recyclerView = findViewById(R.id.rvTopics);
         int numberOfColumn = 2;
+        recyclerView = findViewById(R.id.rvTopics);
         recyclerView.setLayoutManager(new GridLayoutManager(this, numberOfColumn));
         deviceName = getIntent().getStringExtra("device");
+        //TODO: Odswiezanie ekranu
+//        this.handler = new Handler();
+//        this.handler.postDelayed(runnable, 10000);
 
         String JSONstring = getPreferences(MODE_PRIVATE).getString(key + deviceName, null);
         Type type = new TypeToken<HashMap<String, TopicModel>>() {
@@ -85,8 +96,39 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
         actionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(getApplicationContext(), CreateModuleActivity.class);
-                startActivityForResult(intent, CREATE_MODULE_REQUEST_CODE);
+
+                PopupMenu menu = new PopupMenu(getApplicationContext(), v);
+                menu.inflate(R.menu.popup_menu_device_mainboard_add_topic);
+
+                menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        switch (item.getItemId()) {
+                            case R.id.menu_text: {
+//                                Toast.makeText(DeviceMainboardActivity.this, "MENU TEXT", Toast.LENGTH_SHORT).show();
+                                Intent intent = new Intent(getApplicationContext(), CreateModuleActivity.class);
+                                intent.putExtra("type", "text");
+                                startActivityForResult(intent, CREATE_MODULE_REQUEST_CODE);
+                                return true;
+                            }
+                            case R.id.menu_LED: {
+                                Intent intent = new Intent(getApplicationContext(), CreateModuleActivity.class);
+                                intent.putExtra("type", "led");
+                                startActivityForResult(intent, CREATE_MODULE_REQUEST_CODE);
+                                return true;
+                            }
+                            case R.id.menu_button: {
+                                Intent intent = new Intent(getApplicationContext(), CreateModuleActivity.class);
+                                intent.putExtra("type", "button");
+                                startActivityForResult(intent, CREATE_MODULE_REQUEST_CODE);
+                                return true;
+                            }
+                            default:
+                                return false;
+                        }
+                    }
+                });
+                menu.show();
             }
         });
 
@@ -101,8 +143,24 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
          * */
         client.setCallback(this);
         connectClient();
-
     }
+
+//    TODO: ODSWIEZANIE EKRANU
+/*    private final Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+            Toast.makeText(DeviceMainboardActivity.this, "Odświeżanie informacji", Toast.LENGTH_SHORT).show();
+
+            DeviceMainboardActivity.this.handler.postDelayed(runnable, 10000);
+        }
+    };
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        handler.removeCallbacks(runnable);
+        finish();
+    }*/
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -110,8 +168,23 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
 
         if (requestCode == CREATE_MODULE_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
-                addNewTopic(data.getStringExtra("topicValue"), data.getStringExtra("topicTitle"));
+                addNewTopic(data.getStringExtra("topicValue"), data.getStringExtra("topicTitle"), data.getStringExtra("topicType"));
                 adapter.notifyDataSetChanged();
+            }
+        }
+        if (requestCode == SET_LED_COLOR) {
+            if (resultCode == RESULT_OK) {
+                String r = data.getStringExtra("colorRed");
+                String g = data.getStringExtra("colorGreen");
+                String b = data.getStringExtra("colorBlue");
+                String message = r + "," + g + "," + b + ",";
+                MqttMessage mqttMessage = new MqttMessage(message.getBytes());
+                try {
+                    mqttMessage.setRetained(true);
+                    client.publish("ledOutput", mqttMessage);
+                } catch (MqttException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -119,7 +192,7 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
     private void connectClient() {
         MqttConnectOptions options = new MqttConnectOptions();
         options.setAutomaticReconnect(true);
-        options.setCleanSession(false);
+        options.setCleanSession(true);
         try {
             client.connect(options, null, new IMqttActionListener() {
                 @SuppressLint("RestrictedApi")
@@ -134,8 +207,16 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
                     for (int i = 0; i < topics.size(); i++) {
 //                        subscribeTopic(topics.get(i), asyncActionToken, i);
                         try {
-                            String t = getHashMapKeyFromIndex(topics, i);
-                            client.subscribe(t, 1);
+                            //TODO: FIN [pomijanie subskrypcji dla button i LED (CZY DZIALA ?)]
+                            String t = getHashMapKeyByIndex(topics, i);
+                            if (t.equals("ledOutput")) {
+                                client.subscribe("ison", 1);
+                            } else if (t.equals("button")) {
+
+                            } else {
+                                client.subscribe(t, 1);
+                            }
+
                         } catch (MqttException e) {
                             e.printStackTrace();
                         }
@@ -148,6 +229,8 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
                     Log.d(TAG_SERVER_CON, "NIE UDALO SIE POLACZYC " + exception.getMessage());
                     Toast.makeText(getApplicationContext(), "Nie udało się nawiązać połączenia z serwerem " + client.getServerURI(), Toast.LENGTH_LONG).show();
                     actionButton.setVisibility(View.INVISIBLE);
+                    //                    TODO: FIN [ZROBIC ZNIKAJACE OKIENKA JEZELI NIE NAWIAZANO POLACZENIA] do: JAK ODSWIEZAC GUI
+                    recyclerView.setVisibility(View.GONE);
                 }
 
             });
@@ -158,7 +241,7 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
 
     }
 
-    private String getHashMapKeyFromIndex(HashMap<String, TopicModel> hashMap, int index) {
+    private String getHashMapKeyByIndex(HashMap<String, TopicModel> hashMap, int index) {
         String key = null;
         int pos = 0;
         for (Map.Entry<String, TopicModel> entry : hashMap.entrySet()) {
@@ -170,7 +253,7 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
         return key;
     }
 
-    private void addNewTopic(String topicValue, String topicTitle) {
+    private void addNewTopic(String topicValue, String topicTitle, String topicType) {
 
         if (topics.containsKey(topicValue)) {
             Toast.makeText(getApplicationContext(), "Taki temat już istnieje", Toast.LENGTH_SHORT).show();
@@ -178,6 +261,7 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
             TopicModel model = new TopicModel();
             model.setTopicName(topicTitle);
             model.setValue("");
+            model.setTypeOfTopic(topicType);
             topics.put(topicValue, model);
             Toast.makeText(getApplicationContext(), "Dodano nowy temat", Toast.LENGTH_SHORT).show();
             updateTopicList(topics);
@@ -199,25 +283,76 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
         Log.d(TAG, "connectionLost");
         Toast.makeText(getApplicationContext(), "Utracono połączenie z serwerem " + client.getServerURI(), Toast.LENGTH_SHORT).show();
         actionButton.setVisibility(View.INVISIBLE);
+        //        TODO: FIN [ZNIKNAC ONKIENKA KIEDY UTRACI SIE POLACZENIE JAK] do: ODSWIEZAC GUI
+        recyclerView.setVisibility(View.GONE);
     }
 
     @Override
     public void messageArrived(String topic, MqttMessage message) throws Exception {
         Log.d(TAG, topic);
-        TopicModel model = topics.get(topic);
-        model.setValue(message.toString());
-        topics.put(topic, model);
+
+
+
+        if (topic.equals("ison")) {
+            String tmp = "";
+            String msg = message.toString();
+            int index = 0;
+            int red = 0;
+            int green = 0;
+            int blue = 0;
+
+            for (int i = 0; i < msg.length(); i++) {
+                if (msg.charAt(i) == ',' && index == 0) {
+                    red = Integer.parseInt(tmp);
+                    index++;
+                    tmp = "";
+                    continue;
+                }
+                if (msg.charAt(i) == ',' && index == 1) {
+                    green = Integer.parseInt(tmp);
+                    index++;
+                    tmp = "";
+                    continue;
+                }
+                if (msg.charAt(i) == ',' && index == 2) {
+                    blue = Integer.parseInt(tmp);
+                    index++;
+                    tmp = "";
+                    continue;
+                }
+                tmp += msg.charAt(i);
+            }
+
+            isOn = red > 0 || green > 0 || blue > 0;
+            if(isOn) {
+                TopicModel model = topics.get("ledOutput");
+                model.setValue(red + "," + green + "," + blue + ",");
+                topics.put("ledOutput", model);
+            }
+        } else {
+            TopicModel model = topics.get(topic);
+            model.setValue(message.toString());
+            topics.put(topic, model);
+        }
         adapter.notifyDataSetChanged();
     }
 
     @Override
     public void deliveryComplete(IMqttDeliveryToken token) {
         Log.d(TAG, "deliveryComplete");
+        Toast.makeText(this, "Wysłano wiadomość", Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onItemClick(View view, int position) {
+        String key = getHashMapKeyByIndex(topics, position);
 
+        if (topics.get(key).getTypeOfTopic().equals("led")) {
+            Intent intent = new Intent(getApplicationContext(), LedControlPanel.class);
+            intent.putExtra("color", topics.get(key).getValue());
+            intent.putExtra("ison", isOn);
+            startActivityForResult(intent, SET_LED_COLOR);
+        }
     }
 
     @Override
@@ -234,8 +369,7 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
                 switch (item.getItemId()) {
                     case R.id.menu_edit: {
                         Toast.makeText(DeviceMainboardActivity.this, "MENU EDIT position " + position, Toast.LENGTH_SHORT).show();
-                        //TODO: Implementacja edycji i usuwania kafelków, REMAKE przechowywania danych
-                        // chodzi o arrayList z tematami za dużo nadmiernych operacji przenoszenia ZGUBI MNIE TO !!
+                        //TODO: Implementacja edycji topica (na zasadzie usun dodaj na nowo)
 //                        Intent intent = new Intent(getApplicationContext(), CreateModuleActivity.class);
 //                        String topic = topicsAndValues.get(to)
 //                        intent.putExtra("topicName", topic);
@@ -243,7 +377,7 @@ public class DeviceMainboardActivity extends AppCompatActivity implements MqttCa
                         return true;
                     }
                     case R.id.menu_delete: {
-                        String key = getHashMapKeyFromIndex(topics,position);
+                        String key = getHashMapKeyByIndex(topics, position);
                         adapter.removeItem(key, position);
                         topics.remove(key);
                         updateTopicList(topics);
