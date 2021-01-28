@@ -1,5 +1,8 @@
 package com.mainactivity.systemdozarzadzaniadomem.Models;
 
+/**
+ * Klasa reprezentująca model tematu dla MQTT serwer
+ */
 public class TopicModel {
     private String topicName;
     private String value;

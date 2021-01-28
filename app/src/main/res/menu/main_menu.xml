@@ -4,5 +4,5 @@
     <item
         android:id="@+id/addNewDevice"
         android:icon="@android:drawable/ic_input_add"
-        android:title="@string/dodaj_nowe_urz_dzenie" />
+        android:title="Dodaj nowy serwer" />
 </menu>

@@ -11,9 +11,15 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.mainactivity.systemdozarzadzaniadomem.R;
 
+/**
+ * Acivity odpowiada za wpisanie i zebranie inforamcji dotyczących jakiegoś tematu.
+ */
 public class CreateModuleActivity extends AppCompatActivity {
 
     String topicType = "";
+    String topicName = "";
+    String key = "";
+    Boolean edit = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,23 +27,33 @@ public class CreateModuleActivity extends AppCompatActivity {
         setContentView(R.layout.activity_create_module);
 
         final EditText etTopicTitle = findViewById(R.id.etTopicText);
-        final EditText etTopicValue = findViewById(R.id.etTopicValue);
+        final EditText etTopicKey = findViewById(R.id.etTopicKey);
         Button btSaveTopic = findViewById(R.id.btSaveTopic);
 
-        if (getIntent().hasExtra("type")) {
-            topicType = getIntent().getStringExtra("type");
+        if (getIntent().hasExtra("topicType")) {
+            topicType = getIntent().getStringExtra("topicType");
+        }
+        if(getIntent().hasExtra("topicName")) {
+            topicName = getIntent().getStringExtra("topicName");
+            etTopicTitle.setText(topicName);
+        }
+        if(getIntent().hasExtra("key")) {
+            key = getIntent().getStringExtra("key");
+            etTopicKey.setText(key);
+            edit = true;
         }
 
         btSaveTopic.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String topicTitle = String.valueOf(etTopicTitle.getText());
-                String topicValue = String.valueOf(etTopicValue.getText());
+                String topicKey = String.valueOf(etTopicKey.getText());
 
                 Intent intent = new Intent(getApplicationContext(), DeviceMainboardActivity.class);
                 intent.putExtra("topicTitle", topicTitle);
-                intent.putExtra("topicValue", topicValue);
+                intent.putExtra("topicKey", topicKey);
                 intent.putExtra("topicType", topicType);
+                intent.putExtra("edit", edit);
                 setResult(Activity.RESULT_OK, intent);
                 finish();
             }

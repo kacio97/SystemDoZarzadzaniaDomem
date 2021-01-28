@@ -1,10 +1,10 @@
 package com.mainactivity.systemdozarzadzaniadomem.Models;
 
-import android.os.Parcel;
-import android.os.Parcelable;
-
 import java.io.Serializable;
 
+/**
+ * Klasa reprezentująca model dla serwera MQTT
+ */
 public class ServerDevice implements Serializable {
 
     private String deviceName;

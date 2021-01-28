@@ -14,10 +14,13 @@ import com.mainactivity.systemdozarzadzaniadomem.R;
 
 import java.util.ArrayList;
 
+/**
+ * Klasa ta odpowiada za prawidłowe wyświetlanie oraz zacządzanie revycler view dla klasy MainActivity
+ */
 public class MainActivityAdapter extends RecyclerView.Adapter<MainActivityAdapter.ViewHolder> {
 
-    private ArrayList<ServerDevice> data;
-    private LayoutInflater mInflater;
+    private final ArrayList<ServerDevice> data;
+    private final LayoutInflater mInflater;
     private ItemClickListener itemClickListener;
 
     public MainActivityAdapter(ArrayList<ServerDevice> data, Context context) {
@@ -43,18 +46,28 @@ public class MainActivityAdapter extends RecyclerView.Adapter<MainActivityAdapte
         return this.data.size();
     }
 
+
+    /**
+     * Metoda która odpowiada za usunięcie elementu z listy recycler view
+     * @param position pozycja wybranego elementu
+     */
     public void removeItem(int position) {
         data.remove(position);
         notifyItemRemoved(position);
     }
 
+    /**
+     * Metoda odpowiada za przywrócenie skasowanego elementu z listy
+     * @param item Obiekt typu ServerDevice
+     * @param position pozycja wybranego elementu
+     */
     public void restoreItem(ServerDevice item, int position) {
         data.add(position, item);
         notifyItemInserted(position);
     }
 
     /**
-     * przechowuje i przetwarza widoki przewijane poza ekran
+     * Przechowuje i przetwarza widoki przewijane poza ekran
      */
     public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
 

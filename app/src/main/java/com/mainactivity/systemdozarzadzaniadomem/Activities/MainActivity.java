@@ -99,6 +99,13 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
 
     }
 
+
+    /**
+     * Metoda która uruchamia się i zbiera dane po przejściu z zakończonego Activity
+     * @param requestCode Kod zwrócony z innego activity (Określa jaka czynność była wykonana)
+     * @param resultCode Kod wynikowy (Czy rezultat jest prawidłowy)
+     * @param data Dane przesłane przez intent
+     */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -125,6 +132,11 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
         }
     }
 
+    /**
+     * Metoda która pozwala na usuwanie urządzeń oraz przywracanie ich w określonym czasie.
+     * Wywołanie metody następuje podczas przesunięcia elementu RecyclerView w lewo, czynność
+     * ta wykonywana jest wewnątrz metody onSwiped()
+     */
     private void swipeToDeleteAndUndo() {
         SwipieToDeleteCallback swipieToDeleteCallback = new SwipieToDeleteCallback(this) {
             @Override
@@ -154,6 +166,12 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
         itemTouchHelper.attachToRecyclerView(recyclerView);
     }
 
+
+    /**
+     * Metoda określa zachowanie podczas pojedyńczego naciśnięcia na dany element recycler view
+     * @param view Obecny widok
+     * @param positon pozycja która określa wartość na jakiej znajduje się element
+     */
     @Override
     public void onItemClick(View view, int positon) {
         Toast.makeText(this, "Nawiązuję połączenie z " + adapter.getItemName(positon) + " " + positon, Toast.LENGTH_SHORT).show();
@@ -164,6 +182,12 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
         startActivity(intent);
     }
 
+
+    /**
+     * Metoda określa zachowanie podczas długiego przytrzymania (naciśnięcia) na danym elemencie recycler view
+     * @param view Obecny widok
+     * @param position pozycja która określa wartość na jakiej znajduje się element
+     */
     @Override
     public void onLongItemClick(View view, int position) {
         Toast.makeText(this, "Edycja urządzenia " + adapter.getItemName(position) + " " + position, Toast.LENGTH_SHORT).show();
@@ -175,6 +199,11 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
     }
 
 
+    /**
+     * Metoda która odpowiada za dodawanie nowego urządzenia (tj. serwer MQTT) do listy urządzeń.
+     * @param s Obiekt ten przechowuje informacje na temat serwera do którego będziemy próbowali
+     *          nawiązać połączenie.
+     */
     public void addNewDevice(ServerDevice s) {
         boolean exist = false;
 
@@ -203,6 +232,12 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
         }
     }
 
+    /**
+     * Aktualizacja informacji dotyczących konkretnego serwera podczas zmiany jego edycji.
+     * @param s Obiekt ten przechowuje informacje na temat serwera MQTT do którego będziemy próbowali
+     *          nawiązać połączenie.
+     * @param position Pozycja elementu znajdującego się na liście
+     */
     public void updateDevice(ServerDevice s, int position) {
         devices.get(position).setClientID(s.getClientID());
         devices.get(position).setDeviceIP(s.getDeviceIP());
@@ -215,6 +250,12 @@ public class MainActivity extends AppCompatActivity implements Serializable, Mai
         Toast.makeText(getApplicationContext(), "Udało się edytować wybrane urządzenie", Toast.LENGTH_LONG).show();
     }
 
+
+    /**
+     * Aktualizacja danych dotycząca zmian które wystąpiły w liście serwerów MQTT np. edycja/usuniecie/dodanie
+     * Dane przechowywane są w pamięci telefonu i odtwarzane podczas uruchamiania activity
+     * @param devices Lista serwerów/urządzeń
+     */
     private void updateDeviceList(ArrayList<ServerDevice> devices) {
         SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
         String json = new Gson().toJson(devices);
