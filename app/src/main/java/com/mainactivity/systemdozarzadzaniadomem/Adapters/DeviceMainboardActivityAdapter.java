@@ -49,17 +49,21 @@ public class DeviceMainboardActivityAdapter extends RecyclerView.Adapter<DeviceM
             holder.tvTopicInfo.setBackgroundColor(0xB2DCE775);
             holder.tvTopic.setBackgroundColor(0xB2DCE775);
         }
-        if(topic.getTypeOfTopic().equals("button") && topic.getValue() == "Włącz") {
+        else if(topic.getTypeOfTopic().equals("button") && topic.getValue() == "Włącz") {
             holder.background.setBackgroundColor(0xC91B5E20);
             holder.tvTopicInfo.setBackgroundColor(0x667CB342);
             holder.tvTopic.setBackgroundColor(0x667CB342);
         }
 
-        if(topic.getTypeOfTopic().equals("led")) {
+       else if(topic.getTypeOfTopic().equals("led")) {
             parseColor(topic.getValue());
-            holder.background.setBackgroundColor(Color.argb(60,red,green,blue));
-            holder.tvTopic.setBackgroundColor(Color.argb(90,red,green,blue));
-            holder.tvTopicInfo.setBackgroundColor(Color.argb(90,red,green,blue));
+            holder.background.setBackgroundColor(Color.argb(50,red,green,blue));
+            holder.tvTopic.setBackgroundColor(Color.argb(99,red,green,blue));
+            holder.tvTopicInfo.setBackgroundColor(Color.argb(99,red,green,blue));
+        } else {
+            holder.background.setBackgroundColor(0xC91B5E20);
+            holder.tvTopic.setBackgroundColor(0x667CB342);
+            holder.tvTopicInfo.setBackgroundColor(0x667CB342);
         }
 
     }
