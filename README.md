@@ -1,3 +1,4 @@
+![Screenshot_20210123-151554_System do zarzadzania domem](https://user-images.githubusercontent.com/44004043/127054940-5187e1dd-383d-4c91-a7f7-96122081d102.jpg)
 # SystemDoZarzadzaniaDomem
 Inżynierka ANDROID APP
 
